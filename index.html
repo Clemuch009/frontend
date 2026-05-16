@@ -57,7 +57,7 @@ input[type=range]{width:100%;accent-color:var(--accent);cursor:pointer;}
 .btn-row .btn{flex:1;}
 .btn.active{border-color:var(--accent);color:var(--accent);}
 .main{padding:12px;overflow:hidden;display:flex;flex-direction:column;gap:10px;}
-.panels{flex:1;display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;min-height:0;}
+.panels{flex:1;display:grid;grid-template-columns:1fr 32px 1fr 1fr;gap:10px;min-height:0;}
 .panel{display:flex;flex-direction:column;gap:5px;min-height:0;}
 .panel-hdr{display:flex;align-items:center;justify-content:space-between;}
 .panel-hdr .sec-label{margin-bottom:0;}
@@ -182,6 +182,7 @@ input[type=range]{width:100%;accent-color:var(--accent);cursor:pointer;}
         <div class="slider-hdr"><span>unsharp amount</span><span id="unsharpDisplay">40%</span></div>
         <input type="range" id="unsharpSlider" min="0" max="100" value="40">
       </div>
+      <div style="font-size:10px;color:#F59E0B;margin-top:5px;">↑ slide to see different sharpness effects</div>
     </div>
 
     <div class="sep"></div>
@@ -211,6 +212,10 @@ input[type=range]{width:100%;accent-color:var(--accent);cursor:pointer;}
           </div>
           <canvas id="canvasA"></canvas>
         </div>
+      </div>
+
+      <div style="display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+        <button onclick="swapImages()" title="swap A and B" style="background:var(--card);border:1px solid var(--border);color:var(--text);width:28px;height:28px;border-radius:4px;cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center;">⇄</button>
       </div>
 
       <div class="panel">
@@ -704,6 +709,34 @@ function onDrop(e,slot){
   e.preventDefault();offDrag(slot);
   const f=e.dataTransfer.files[0];
   if(f&&f.type.startsWith('image/'))loadFromFile(f,slot);
+}
+
+function swapImages(){
+  if(!S.imgA&&!S.imgB)return;
+  [S.imgA,S.imgB]=[S.imgB,S.imgA];
+  const cA=document.getElementById('canvasA');
+  const cB=document.getElementById('canvasB');
+  const hA=document.getElementById('hintA');
+  const hB=document.getElementById('hintB');
+  const iA=document.getElementById('infoA');
+  const iB=document.getElementById('infoB');
+  // Swap canvas pixels
+  const tmpCanvas=document.createElement('canvas');
+  tmpCanvas.width=cA.width;tmpCanvas.height=cA.height;
+  tmpCanvas.getContext('2d').drawImage(cA,0,0);
+  cA.width=cB.width;cA.height=cB.height;
+  cA.getContext('2d').drawImage(cB,0,0);
+  cB.width=tmpCanvas.width;cB.height=tmpCanvas.height;
+  cB.getContext('2d').drawImage(tmpCanvas,0,0);
+  // Swap visibility
+  const aLoaded=S.imgA!=null;const bLoaded=S.imgB!=null;
+  cA.style.display=aLoaded?'block':'none';
+  cB.style.display=bLoaded?'block':'none';
+  hA.style.display=aLoaded?'none':'block';
+  hB.style.display=bLoaded?'none':'block';
+  // Swap info text
+  const tmp=iA.textContent;iA.textContent=iB.textContent;iB.textContent=tmp;
+  scheduleCompose();
 }
 
 // Resolution
