@@ -1,15 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-
-<script async src="https://www.googletagmanager.com/gtag/js?id=G-GS6C4PB6QT"></script>
-<script>
-  window.dataLayer = window.dataLayer || [];
-  function gtag(){dataLayer.push(arguments);}
-  gtag('js', new Date());
-
-  gtag('config', 'G-GS6C4PB6QT');
-</script>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>PixelComposer — deterministic fusion engine</title>
@@ -127,7 +118,7 @@ input[type=range]{width:100%;accent-color:var(--accent);cursor:pointer;}
     <div>
       <div class="sec-label">FUSION MODE</div>
       <select id="modeSelect">
-        <option value="frequency">▸ frequency fusion</option>
+        <option value="frequency" selected>▸ frequency fusion</option>
         <option value="normal">alpha blend</option>
         <option value="detail">detail preserve</option>
         <option value="multiply">multiply</option>
@@ -599,6 +590,15 @@ function setProgress(pct,text){
   document.getElementById('progressBar').style.width=pct+'%';
   if(text)document.getElementById('loadingText').textContent=text;
 }
+const WORKER='https://pixelcomposer-api.YOUR-SUBDOMAIN.workers.dev';
+let _uid=localStorage.getItem('pc_uid');
+if(!_uid){_uid=crypto.randomUUID();localStorage.setItem('pc_uid',_uid);}
+const _ref=new URLSearchParams(location.search).get('ref')||document.referrer.slice(0,128)||'';
+function track(event){
+  fetch(WORKER+'/track',{method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({uid:_uid,event,ref:_ref})}).catch(()=>{});
+}
+track('page_open');
 
 // Load image — store FULL original resolution, only scale preview
 function loadFromFile(file,slot){
@@ -625,6 +625,7 @@ function loadFromFile(file,slot){
       document.getElementById('drop'+slot).classList.add('loaded');
       document.getElementById('info'+slot).textContent=`${img.naturalWidth}×${img.naturalHeight}`;
       setStatus(`image ${slot} loaded — ${img.naturalWidth}×${img.naturalHeight} (full resolution preserved)`);
+      track('image_upload');
       checkResWarn();
       scheduleCompose();
     };
@@ -691,6 +692,7 @@ function scheduleCompose(){
 function compose(){
   if(!S.imgA||!S.imgB||S.busy)return;
   S.busy=true;
+  track('compose');
   if(S.worker){S.worker.terminate();S.worker=null;}
 
   const overlay=document.getElementById('loadingOverlay');
@@ -828,6 +830,7 @@ document.getElementById('exportBtn').addEventListener('click',()=>{
   a.href=c.toDataURL('image/png');
   a.download=`pixelcomposer_${S.w}x${S.h}.png`;
   a.click();
+  track('export');
   setStatus(`exported · ${S.w}×${S.h} PNG`);
 });
 
@@ -859,7 +862,7 @@ function submitFeedback(){
   fetch(WORKER+'/feedback',{
     method:'POST',
     headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({rating:fbRating,message:text||''})
+    body:JSON.stringify({rating:fbRating,message:text||'',uid:_uid})
   })
   .then(r=>r.json())
   .catch(()=>({ok:false}));
