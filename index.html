@@ -93,6 +93,7 @@ input[type=range]{width:100%;accent-color:var(--accent);cursor:pointer;}
 .contrib-item span{color:var(--accent);font-weight:700;}
 .res-warn{font-size:10px;color:#F59E0B;margin-top:5px;display:none;line-height:1.4;}
 .statusbar{height:32px;border-top:1px solid var(--border);background:var(--panel);display:flex;align-items:center;justify-content:space-between;padding:0 16px;font-size:11px;color:var(--muted);}
+@keyframes point{from{transform:translateY(0);}to{transform:translateY(-4px);}}
 @media(max-width:1000px){
   body{overflow:auto;}
   .root{grid-template-columns:1fr;height:auto;}
@@ -188,6 +189,20 @@ input[type=range]{width:100%;accent-color:var(--accent);cursor:pointer;}
     <div class="sep"></div>
 
     <button class="btn primary" id="exportBtn" disabled>EXPORT PNG</button>
+
+    <div class="sep"></div>
+
+    <!-- Example loop widget -->
+    <div id="exampleWidget" style="position:relative;">
+      <div style="display:flex;align-items:center;gap:6px;margin-bottom:5px;">
+        <span style="font-size:18px;animation:point 1s ease-in-out infinite alternate;">👆</span>
+        <span style="font-size:10px;color:#F59E0B;letter-spacing:1px;text-transform:uppercase;">example — click to pause</span>
+      </div>
+      <canvas id="exampleCanvas" width="226" height="90"
+        style="width:100%;height:90px;border-radius:6px;border:1px solid var(--border);cursor:pointer;display:block;"
+        onclick="toggleExample()"></canvas>
+      <div id="exampleLabel" style="font-size:10px;color:var(--muted);margin-top:4px;text-align:center;">upload two images to try it yourself ↑</div>
+    </div>
 
   </div>
 
@@ -692,6 +707,7 @@ function loadFromFile(file,slot){
       document.getElementById('info'+slot).textContent=`${img.naturalWidth}×${img.naturalHeight}`;
       setStatus(`image ${slot} loaded — ${img.naturalWidth}×${img.naturalHeight} (full resolution preserved)`);
       track('image_upload');
+      stopExample();
       checkResWarn();
       scheduleCompose();
     };
@@ -927,6 +943,89 @@ document.getElementById('exportBtn').addEventListener('click',()=>{
   track('export');
   setStatus(`exported · ${S.w}×${S.h} PNG`);
 });
+
+// ── Example loop ──────────────────────────────────────────────
+const EX = {
+  running: true,
+  frame: 0,
+  timer: null,
+  t: 0,
+  paused: false,
+};
+
+// Generate procedural gradient pair and blend them on the example canvas
+function exampleTick() {
+  if (!EX.running || EX.paused) return;
+  const c = document.getElementById('exampleCanvas');
+  const ctx = c.getContext('2d');
+  const w = c.width, h = c.height;
+  EX.t += 0.012;
+  const t = EX.t;
+
+  // Image A — shifting gradient
+  const gA = ctx.createLinearGradient(
+    w * (0.5 + 0.5 * Math.sin(t)),
+    0,
+    w * (0.5 + 0.5 * Math.cos(t * 0.7)),
+    h
+  );
+  const hA = (t * 40) % 360;
+  gA.addColorStop(0, `hsl(${hA},90%,55%)`);
+  gA.addColorStop(1, `hsl(${hA + 120},90%,35%)`);
+
+  // Image B — complementary gradient
+  const gB = ctx.createLinearGradient(
+    0,
+    h * (0.5 + 0.4 * Math.sin(t * 0.8 + 1)),
+    w,
+    h * (0.5 + 0.4 * Math.cos(t * 0.6))
+  );
+  const hB = (hA + 180) % 360;
+  gB.addColorStop(0, `hsl(${hB},85%,50%)`);
+  gB.addColorStop(1, `hsl(${hB + 80},85%,30%)`);
+
+  // Draw A
+  const offA = document.createElement('canvas');
+  offA.width = w; offA.height = h;
+  const ctxA = offA.getContext('2d');
+  ctxA.fillStyle = gA; ctxA.fillRect(0, 0, w, h);
+
+  // Draw B
+  const offB = document.createElement('canvas');
+  offB.width = w; offB.height = h;
+  const ctxB = offB.getContext('2d');
+  ctxB.fillStyle = gB; ctxB.fillRect(0, 0, w, h);
+
+  // Blend using soft light in canvas
+  ctx.clearRect(0, 0, w, h);
+  ctx.drawImage(offA, 0, 0);
+  ctx.globalCompositeOperation = 'soft-light';
+  ctx.drawImage(offB, 0, 0);
+  ctx.globalCompositeOperation = 'source-over';
+
+  // Mode label cycling
+  const modes = ['soft light','screen','overlay','hsl blend','frequency'];
+  const modeIdx = Math.floor(t / 2) % modes.length;
+  document.getElementById('exampleLabel').textContent =
+    `mode: ${modes[modeIdx]} — upload two images to try it yourself ↑`;
+
+  EX.frame++;
+}
+
+function toggleExample() {
+  EX.paused = !EX.paused;
+  const hint = document.querySelector('#exampleWidget span:last-of-type');
+  if (hint) hint.textContent = EX.paused
+    ? 'example — click to resume'
+    : 'example — click to pause';
+}
+
+function stopExample() {
+  EX.paused = true;
+  document.getElementById('exampleWidget').style.opacity = '0.4';
+}
+
+EX.timer = setInterval(exampleTick, 40); // ~25fps
 
 // Init
 document.getElementById('freqControls').style.display='none';
