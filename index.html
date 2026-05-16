@@ -656,7 +656,7 @@ function setProgress(pct,text){
   document.getElementById('progressBar').style.width=pct+'%';
   if(text)document.getElementById('loadingText').textContent=text;
 }
-const WORKER='https://pixelcomposer-api.YOUR-SUBDOMAIN.workers.dev';
+const WORKER='https://pixelcomposer-api.pixelcomposerapp.workers.dev';
 let _uid=localStorage.getItem('pc_uid');
 if(!_uid){_uid=crypto.randomUUID();localStorage.setItem('pc_uid',_uid);}
 const _ref=new URLSearchParams(location.search).get('ref')||document.referrer.slice(0,128)||'';
